@@ -261,10 +261,10 @@ class TorchDevice:
 
         # pos embedding
         # @GOROman addressed (20230306)
-        if self.device_type == DeviceType.MPS:
-            positions = torch.cumsum(mask.to('cpu'), dim=1).to('mps:0').int() * mask + 1
-        else:
-            positions = torch.cumsum(mask, dim=1).int() * mask + 1
+        # if self.device_type == DeviceType.MPS:
+        #     positions = torch.cumsum(mask.to('cpu'), dim=1).to('mps:0').int() * mask + 1
+        # else:
+        positions = torch.cumsum(mask, dim=1).int() * mask + 1
 
         # cut positions if `past_key_values_length` is > 0
         past_key_values_length = mask.shape[1] - token_ids.shape[1]
@@ -284,11 +284,11 @@ class TorchDevice:
         b, s, h = inputs.shape
 
         # workaround for PyTorch MPS bug of varianceEps implementation
-        if self.device_type == DeviceType.MPS:
-            hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
-            hidden = hidden.type(torch.float16)
-        else:
-            hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
+        # if self.device_type == DeviceType.MPS:
+        #     hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
+        #     hidden = hidden.type(torch.float16)
+        # else:
+        hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
 
         if donate[0]: inputs.delete()
 
@@ -330,12 +330,12 @@ class TorchDevice:
         scaling = head_dim ** -0.5
 
         # workaround for PyTorch MPS bug of varianceEps implementation
-        if self.device_type == DeviceType.MPS:
-            # hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data, eps=torch.tensor([1e-05]).type(torch.float16))
-            hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
-            hidden = hidden.type(torch.float16)
-        else:
-            hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
+        # if self.device_type == DeviceType.MPS:
+        #     # hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data, eps=torch.tensor([1e-05]).type(torch.float16))
+        #     hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
+        #     hidden = hidden.type(torch.float16)
+        # else:
+        hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
 
         # shape: (b, s, h)
         q = F.linear(hidden, w_q.data, bias=b_q.data) * scaling
@@ -370,6 +370,7 @@ class TorchDevice:
         value = torch.bmm(attn_weights, v).view(b, n_head, s, head_dim)
         # shape: (b, s, h)
         value = value.transpose(1, 2).reshape(b, s, h)
+        # print(value.size(), w_out.data.size())
         value = F.linear(value, w_out.data, bias=b_out.data)
 
         value.add_(inputs.data)
@@ -390,6 +391,7 @@ class TorchDevice:
 
         return TorchTensor.create_from_torch(value, self), k, v
 
+
     def mha_gen(self, inputs, attention_mask, w_q, b_q, w_k, b_k, w_v, b_v,
                 w_out, b_out, w_ln, b_ln, n_head, k_cache, v_cache, donate,
                 attn_sparsity, compress_cache, comp_config):
@@ -407,11 +409,11 @@ class TorchDevice:
         scaling = head_dim ** -0.5
 
         # workaround for PyTorch MPS bug of varianceEps implementation
-        if self.device_type == DeviceType.MPS:
-            hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
-            hidden = hidden.type(torch.float16)
-        else:
-            hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
+        # if self.device_type == DeviceType.MPS:
+        #     hidden = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
+        #     hidden = hidden.type(torch.float16)
+        # else:
+        hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
 
         # shape: (b, 1, h)
         q = F.linear(hidden, w_q.data, bias=b_q.data) * scaling
@@ -607,11 +609,11 @@ class TorchDevice:
         b, s, h = inputs.shape
 
         # workaround for PyTorch MPS bug of varianceEps implementation
-        if self.device_type == DeviceType.MPS:
-            out = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
-            out = out.type(torch.float16)
-        else:
-            out = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
+        # if self.device_type == DeviceType.MPS:
+        #     out = F.layer_norm(inputs.data.type(torch.float32), (h,), weight=w_ln.data.type(torch.float32), bias=b_ln.data.type(torch.float32))
+        #     out = out.type(torch.float16)
+        # else:
+        out = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
 
         out = F.linear(out, wi.data, bias=bi.data)
         F.relu(out, inplace=True)
